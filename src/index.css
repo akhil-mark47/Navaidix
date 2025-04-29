@@ -4,9 +4,16 @@
 
 /* Custom styles */
 .gradient-bg {
-  background: linear-gradient(135deg, #003366 0%, #FF4500 100%);
+  background: linear-gradient(135deg, #0F3460 0%, #1A5F7A 40%, #2E8BC0 70%, #79C7E3 90%, #E1F5FE 100%);
   background-size: 200% 200%;
   animation: gradient 15s ease infinite;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #0F3460, #2E8BC0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 @keyframes gradient {
@@ -21,27 +28,44 @@
   }
 }
 
-/* Button styles */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+body {
+  font-family: 'Poppins', sans-serif;
+  @apply text-slate-700;
+  background-color: white;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+  @apply font-semibold tracking-wide;
+}
+
 .btn-primary {
-  @apply px-6 py-3 bg-primary text-white rounded-lg transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1;
+  @apply px-6 py-3 bg-primary text-white rounded-lg transition-all duration-300 hover:bg-primary-dark hover:shadow-lg transform hover:-translate-y-1;
 }
 
-/* Card styles */
+.btn-secondary {
+  @apply px-6 py-3 bg-secondary text-white rounded-lg transition-all duration-300 hover:bg-accent hover:shadow-lg transform hover:-translate-y-1;
+}
+
+.btn-outline {
+  @apply px-6 py-3 border border-primary text-primary rounded-lg transition-all duration-300 hover:bg-pale hover:shadow-lg transform hover:-translate-y-1;
+}
+
 .card {
-  @apply bg-white rounded-lg shadow-soft transition-all duration-300 hover:shadow-hover;
+  @apply bg-white rounded-lg shadow-sm border border-slate-100 transition-all duration-300 hover:shadow-md;
 }
 
-/* Section styles */
 .section {
   @apply py-16 px-4;
 }
 
-/* Navigation styles */
 .nav-link {
-  @apply px-4 py-2 text-gray-700 hover:text-secondary transition-colors duration-300;
+  @apply px-4 py-2 text-slate-600 hover:text-primary transition-colors duration-300;
 }
 
-/* Hide scrollbar */
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -51,17 +75,209 @@
   display: none;
 }
 
-/* Smooth transitions */
 * {
   @apply transition-colors duration-300;
 }
 
-/* Partner logos animation */
 @keyframes scroll {
   0% {
     transform: translateX(0);
   }
   100% {
     transform: translateX(-100%);
+  }
+}
+
+/* Enhanced animations and transitions */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .btn-primary, .btn-secondary, .btn-outline {
+    @apply py-2.5 px-5 text-sm;
+  }
+  
+  h1 {
+    @apply text-3xl;
+  }
+  
+  h2 {
+    @apply text-2xl;
+  }
+  
+  .section {
+    @apply py-12;
+  }
+}
+
+/* Animated background elements */
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--tw-gradient-from), var(--tw-gradient-to));
+  opacity: 0.15;
+  filter: blur(80px);
+}
+
+.shape-1 {
+  width: 400px;
+  height: 400px;
+  left: -100px;
+  top: 20%;
+  --tw-gradient-from: #0284c7;
+  --tw-gradient-to: #7dd3fc;
+  animation: float 20s ease-in-out infinite;
+}
+
+.shape-2 {
+  width: 300px;
+  height: 300px;
+  right: -80px;
+  top: 10%;
+  --tw-gradient-from: #6366f1;
+  --tw-gradient-to: #a5b4fc;
+  animation: float 25s ease-in-out infinite reverse;
+}
+
+.shape-3 {
+  width: 250px;
+  height: 250px;
+  left: 40%;
+  bottom: 10%;
+  --tw-gradient-from: #06b6d4;
+  --tw-gradient-to: #67e8f9;
+  animation: float 18s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-40px, 20px) scale(1.05);
+  }
+  50% {
+    transform: translate(20px, 40px) scale(0.95);
+  }
+  75% {
+    transform: translate(30px, -20px) scale(1.02);
+  }
+}
+
+/* Smooth scroll behavior */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Animation delays for staggered entrance */
+.delay-100 {
+  animation-delay: 100ms;
+}
+
+.delay-200 {
+  animation-delay: 200ms;
+}
+
+.delay-300 {
+  animation-delay: 300ms;
+}
+
+.delay-400 {
+  animation-delay: 400ms;
+}
+
+.delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Add shimmer effect */
+.shimmer {
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.5) 50%, 
+    rgba(255,255,255,0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Swiper pagination customization */
+.swiper-pagination-bullet {
+  background-color: white !important;
+  opacity: 0.5 !important;
+}
+
+.swiper-pagination-bullet-active {
+  background-color: white !important;
+  opacity: 1 !important;
+}
+
+/* Backdrop blur */
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Hover transitions */
+.hover-scale {
+  transition: transform 0.3s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: scale(1.05);
+}
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Additional CSS for mobile optimization */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .section {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
   }
 }
