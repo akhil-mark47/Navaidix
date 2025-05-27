@@ -1,69 +1,72 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import * as authService from '../services/authService';
 
+// Create context
 export const AuthContext = createContext();
 
-// Custom hook for using auth context
+// Custom hook to use auth context
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
 
+// Provider component
 export const AuthProvider = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Check if user is already logged in (localStorage)
+  // On load, check if user is already logged in
   useEffect(() => {
-    const checkAuth = () => {
-      const storedUser = localStorage.getItem('navaidixUser');
-      const token = localStorage.getItem('navaidixToken');
-      
-      if (storedUser && token) {
-        setUser(JSON.parse(storedUser));
-        setIsAuthenticated(true);
-      }
-      
-      setLoading(false);
-    };
-    
-    checkAuth();
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+    setLoading(false);
   }, []);
 
-  // Call this on sign in
-  const signIn = (userData) => {
-    setIsAuthenticated(true);
-    setUser(userData);
-    
-    // Store in localStorage for persistence
-    localStorage.setItem('navaidixUser', JSON.stringify(userData));
-    localStorage.setItem('navaidixToken', 'static-token-for-demo');
+  // Sign up function - connects to MongoDB
+  const signUp = async (userData) => {
+    try {
+      setError(null);
+      const response = await authService.register(userData);
+      setCurrentUser(response.data.user);
+      return response;
+    } catch (error) {
+      setError(error.message || 'Failed to register');
+      throw error;
+    }
   };
 
-  // Call this on sign out
+  // Sign in function - validates with MongoDB
+  const signIn = async (credentials) => {
+    try {
+      setError(null);
+      const user = await authService.login(credentials.email, credentials.password);
+      setCurrentUser(user);
+      return user;
+    } catch (error) {
+      setError(error.message || 'Failed to login');
+      throw error;
+    }
+  };
+
+  // Sign out function
   const signOut = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-    
-    // Clear storage
-    localStorage.removeItem('navaidixUser');
-    localStorage.removeItem('navaidixToken');
+    authService.logout();
+    setCurrentUser(null);
+  };
+
+  const value = {
+    currentUser,
+    signUp,
+    signIn,
+    signOut,
+    error
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        loading,
-        user,
-        signIn,
-        signOut
-      }}
-    >
-      {children}
+    <AuthContext.Provider value={value}>
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;

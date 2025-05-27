@@ -1,24 +1,21 @@
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const { currentUser } = useAuth();
 
-  // Show loading state while checking authentication
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-      </div>
-    );
+  // If not logged in, redirect to login
+  if (!currentUser) {
+    return <Navigate to={adminOnly ? "/admin/login" : "/signin"} replace />;
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated) {
-    return <Navigate to="/signin" />;
+  // If admin route but user is not admin, redirect to user dashboard
+  if (adminOnly && currentUser.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
   }
 
-  // Render children if authenticated
+  // User is authorized, render children
   return children;
 };
 

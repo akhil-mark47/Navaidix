@@ -1,135 +1,140 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HiMail, HiLockClosed, HiUser, HiOfficeBuilding } from 'react-icons/hi';
+import { HiUser, HiMail, HiLockClosed, HiPhone } from 'react-icons/hi';
 import { useAuth } from '../../context/AuthContext';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
-    accountType: 'candidate',
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState('');
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     if (errors[name]) setErrors({ ...errors, [name]: '' });
+    if (serverError) setServerError('');
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+    
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email address is invalid';
+      newErrors.email = 'Email is invalid';
     }
+    
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Phone number must be 10 digits';
+    }
+    
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-    if (formData.password !== formData.confirmPassword) {
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
+    
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-    setIsLoading(true);
     
-    // Create a new user object
-    setTimeout(() => {
+    setIsLoading(true);
+    setServerError('');
+    
+    try {
       const userData = {
-        id: Date.now().toString(),
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        name: formData.name,
         email: formData.email,
-        fullName: `${formData.firstName} ${formData.lastName}`,
-        accountType: formData.accountType,
-        createdAt: new Date().toISOString()
+        phone: formData.phone,
+        password: formData.password
       };
       
-      // Log in the user immediately after registration
-      signIn(userData);
+      await signUp(userData);
+      navigate('/signin', { 
+        state: { 
+          message: 'Account created successfully! Please sign in.' 
+        } 
+      });
+    } catch (error) {
+      console.error('Registration error:', error);
+      setServerError(
+        error.message || 
+        'Registration failed. Please try again.'
+      );
+    } finally {
       setIsLoading(false);
-      
-      // Redirect based on account type
-      if (formData.accountType === 'candidate') {
-        navigate('/profile');
-      } else {
-        navigate('/dashboard');
-      }
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white py-12 px-4">
-      <div className="max-w-lg w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-slate-100">
+      <div className="max-w-lg w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
         <div>
           <h2 className="text-center text-3xl font-bold text-primary mb-2">Create your account</h2>
-          <p className="text-center text-sm text-slate-500 mb-6">
+          <p className="text-center text-sm text-slate-500">
             Already have an account?{' '}
-            <Link to="/signin" className="font-medium text-secondary hover:underline">Sign in</Link>
+            <Link to="/signin" className="font-medium text-secondary hover:underline">
+              Sign in
+            </Link>
           </p>
+          
+          {serverError && (
+            <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded" role="alert">
+              <span className="block sm:inline">{serverError}</span>
+            </div>
+          )}
         </div>
-        <form className="space-y-5" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium mb-1">First name</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <HiUser className="h-5 w-5 text-slate-400" />
-                </span>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  autoComplete="given-name"
-                  className={`appearance-none rounded-lg block w-full pl-10 py-3 px-4 border ${errors.firstName ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent`}
-                  placeholder="First name"
-                />
-              </div>
-              {errors.firstName && <p className="mt-1 text-sm text-red-500">{errors.firstName}</p>}
-            </div>
-            <div>
-              <label htmlFor="lastName" className="block text-sm font-medium mb-1">Last name</label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <HiUser className="h-5 w-5 text-slate-400" />
-                </span>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  autoComplete="family-name"
-                  className={`appearance-none rounded-lg block w-full pl-10 py-3 px-4 border ${errors.lastName ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent`}
-                  placeholder="Last name"
-                />
-              </div>
-              {errors.lastName && <p className="mt-1 text-sm text-red-500">{errors.lastName}</p>}
-            </div>
-          </div>
+        
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email address</label>
+            <label htmlFor="name" className="block text-sm font-medium mb-1">Full Name</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <HiUser className="h-5 w-5 text-slate-400" />
+              </span>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={handleChange}
+                autoComplete="name"
+                className={`appearance-none rounded-lg block w-full pl-10 py-3 px-4 border ${errors.name ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent`}
+                placeholder="Full Name"
+              />
+            </div>
+            {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+          </div>
+          
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium mb-1">Email Address</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <HiMail className="h-5 w-5 text-slate-400" />
@@ -142,11 +147,32 @@ const SignUp = () => {
                 onChange={handleChange}
                 autoComplete="email"
                 className={`appearance-none rounded-lg block w-full pl-10 py-3 px-4 border ${errors.email ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent`}
-                placeholder="Email address"
+                placeholder="Email Address"
               />
             </div>
             {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
           </div>
+          
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium mb-1">Phone Number</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <HiPhone className="h-5 w-5 text-slate-400" />
+              </span>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleChange}
+                autoComplete="tel"
+                className={`appearance-none rounded-lg block w-full pl-10 py-3 px-4 border ${errors.phone ? 'border-red-400 bg-red-50' : 'border-slate-200 bg-white'} text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent`}
+                placeholder="Phone Number"
+              />
+            </div>
+            {errors.phone && <p className="mt-1 text-sm text-red-500">{errors.phone}</p>}
+          </div>
+          
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
             <div className="relative">
@@ -166,6 +192,7 @@ const SignUp = () => {
             </div>
             {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
           </div>
+          
           <div>
             <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">Confirm Password</label>
             <div className="relative">
@@ -185,36 +212,7 @@ const SignUp = () => {
             </div>
             {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">I am a:</label>
-            <div className="grid grid-cols-2 gap-4">
-              <div
-                className={`cursor-pointer p-4 rounded-lg border ${formData.accountType === 'candidate' ? 'border-secondary bg-secondary/10' : 'border-slate-200 bg-white'} flex items-center justify-center gap-2 text-slate-700`}
-                onClick={() => setFormData({ ...formData, accountType: 'candidate' })}
-              >
-                <HiUser className="h-5 w-5" />
-                <span>Job Seeker</span>
-              </div>
-              <div
-                className={`cursor-pointer p-4 rounded-lg border ${formData.accountType === 'employer' ? 'border-secondary bg-secondary/10' : 'border-slate-200 bg-white'} flex items-center justify-center gap-2 text-slate-700`}
-                onClick={() => setFormData({ ...formData, accountType: 'employer' })}
-              >
-                <HiOfficeBuilding className="h-5 w-5" />
-                <span>Employer</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center">
-            <input
-              id="terms"
-              name="terms"
-              type="checkbox"
-              className="h-4 w-4 border-slate-300 rounded focus:ring-secondary"
-            />
-            <label htmlFor="terms" className="ml-2 block text-sm text-slate-500">
-              I agree to the <a href="#" className="font-medium text-secondary hover:underline">Terms and Privacy Policy</a>
-            </label>
-          </div>
+          
           <div>
             <button
               type="submit"
@@ -227,7 +225,7 @@ const SignUp = () => {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                'Create Account'
+                'Sign up as Job Seeker'
               )}
             </button>
           </div>

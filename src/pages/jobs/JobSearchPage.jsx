@@ -1,299 +1,380 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { HiSearch, HiLocationMarker, HiOfficeBuilding, HiClock, HiCurrencyDollar } from 'react-icons/hi';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { FaSearch, FaBriefcase, FaDollarSign, FaMapMarkerAlt, FaFilter, FaChevronRight } from 'react-icons/fa';
+import * as jobService from '../../services/jobService';
 
 const JobSearchPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [filters, setFilters] = useState({
-    keyword: '',
-    location: '',
-    category: '',
-    jobType: '',
-    salary: ''
+    search: searchParams.get('search') || '',
+    location: searchParams.get('location') || '',
+    jobType: searchParams.get('jobType') || '',
+    sort: searchParams.get('sort') || 'newest'
   });
+  const [showFilters, setShowFilters] = useState(false);
 
-  const [searchPerformed, setSearchPerformed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const page = parseInt(searchParams.get('page')) || 1;
+  const limit = 10;
 
-  // Mock job data - in a real application this would come from an API
-  const mockJobs = [
-    {
-      id: 1,
-      title: 'Senior Software Engineer',
-      company: 'Tech Innovations Inc.',
-      location: 'San Francisco, CA',
-      type: 'Full-time',
-      salary: '$120,000 - $150,000',
-      posted: '2 days ago',
-      description: 'We are looking for an experienced software engineer to join our team to develop cutting-edge applications...',
-      requirements: ['5+ years experience', 'JavaScript expertise', 'React knowledge', 'Backend experience']
-    },
-    {
-      id: 2,
-      title: 'Product Manager',
-      company: 'Global Solutions',
-      location: 'New York, NY',
-      type: 'Full-time',
-      salary: '$110,000 - $140,000',
-      posted: '1 week ago',
-      description: 'Seeking a product manager to lead our flagship product development and strategy...',
-      requirements: ['3+ years in product management', 'Technical background', 'Agile methodologies', 'Leadership skills']
-    },
-    {
-      id: 3,
-      title: 'UX/UI Designer',
-      company: 'Creative Digital',
-      location: 'Remote',
-      type: 'Contract',
-      salary: '$80,000 - $100,000',
-      posted: '3 days ago',
-      description: 'Looking for a talented designer to create beautiful and functional user interfaces...',
-      requirements: ['Portfolio showcasing work', 'Figma expertise', 'User research experience', 'Prototyping skills']
-    },
-    {
-      id: 4,
-      title: 'Marketing Specialist',
-      company: 'Brand Elevate',
-      location: 'Chicago, IL',
-      type: 'Part-time',
-      salary: '$60,000 - $70,000',
-      posted: '1 day ago',
-      description: 'Join our marketing team to develop and execute marketing campaigns across multiple channels...',
-      requirements: ['Digital marketing experience', 'Social media management', 'Content creation', 'Analytics knowledge']
+  // Fetch jobs when search params change
+  useEffect(() => {
+    const fetchJobs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Build query parameters
+        const queryParams = {
+          page,
+          limit,
+          sort: getApiSortParam(filters.sort),
+        };
+        
+        if (filters.search) queryParams.search = filters.search;
+        if (filters.location) queryParams.location = filters.location;
+        if (filters.jobType) queryParams.jobType = filters.jobType;
+        
+        const response = await jobService.getJobs(queryParams);
+        
+        setJobs(response.data.jobs);
+        setTotalJobs(response.total);
+        setTotalPages(response.pages);
+      } catch (error) {
+        console.error('Error fetching jobs:', error);
+        setError('Failed to fetch jobs. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchJobs();
+  }, [searchParams, page]);
+
+  // Helper function to convert UI sort option to API sort parameter
+  const getApiSortParam = (sortOption) => {
+    switch (sortOption) {
+      case 'newest':
+        return '-createdAt';
+      case 'oldest':
+        return 'createdAt';
+      case 'salary-high':
+        return '-salary.max';
+      case 'salary-low':
+        return 'salary.min';
+      default:
+        return '-createdAt';
     }
-  ];
-
-  // Filter jobs based on search criteria
-  const filteredJobs = mockJobs.filter(job => {
-    const matchesKeyword = filters.keyword ? 
-      job.title.toLowerCase().includes(filters.keyword.toLowerCase()) || 
-      job.description.toLowerCase().includes(filters.keyword.toLowerCase()) : 
-      true;
-    
-    const matchesLocation = filters.location ? 
-      job.location.toLowerCase().includes(filters.location.toLowerCase()) : 
-      true;
-    
-    const matchesCategory = filters.category ? 
-      job.title.toLowerCase().includes(filters.category.toLowerCase()) : 
-      true;
-    
-    const matchesJobType = filters.jobType ? 
-      job.type.toLowerCase() === filters.jobType.toLowerCase() : 
-      true;
-    
-    const matchesSalary = true; // Would implement proper salary range filtering in a real application
-    
-    return matchesKeyword && matchesLocation && matchesCategory && matchesJobType && matchesSalary;
-  });
-
-  const handleChange = (e) => {
-    setFilters({
-      ...filters,
-      [e.target.name]: e.target.value,
-    });
   };
 
-  const handleSearch = (e) => {
+  // Handle search submit
+  const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      setSearchPerformed(true);
-      setIsLoading(false);
-    }, 800);
+    // Update URL parameters
+    const newParams = new URLSearchParams();
+    
+    if (filters.search) newParams.set('search', filters.search);
+    if (filters.location) newParams.set('location', filters.location);
+    if (filters.jobType) newParams.set('jobType', filters.jobType);
+    if (filters.sort) newParams.set('sort', filters.sort);
+    newParams.set('page', '1'); // Reset to first page on new search
+    
+    setSearchParams(newParams);
   };
 
-  const [expandedJob, setExpandedJob] = useState(null);
+  // Handle input change
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle pagination
+  const handlePageChange = (newPage) => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('page', newPage.toString());
+    setSearchParams(newParams);
+  };
+
+  // Format date to relative time
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
+    return `${Math.floor(diffDays / 365)} years ago`;
+  };
 
   return (
-    <div className="pt-20 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl md:text-4xl font-semibold mb-2 text-slate-800">Find Your Perfect Role</h1>
-          <p className="text-lg text-slate-600">Search thousands of jobs matching your skills and career goals</p>
-        </div>
+    <div className="container mx-auto py-8 px-4">
+      <h1 className="text-3xl font-bold mb-8">Find Your Dream Job</h1>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <form onSubmit={handleSearch}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Search Form */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <form onSubmit={handleSearchSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+                Job Title, Skills or Keywords
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <HiSearch className="h-5 w-5 text-slate-400" />
-                </div>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="text-gray-400" />
+                </span>
                 <input
                   type="text"
-                  name="keyword"
-                  value={filters.keyword}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="Job title, keywords, or company"
+                  id="search"
+                  name="search"
+                  value={filters.search}
+                  onChange={handleInputChange}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                  placeholder="e.g., Software Engineer"
                 />
               </div>
-              
+            </div>
+            
+            <div className="relative">
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <HiLocationMarker className="h-5 w-5 text-slate-400" />
-                </div>
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaMapMarkerAlt className="text-gray-400" />
+                </span>
                 <input
                   type="text"
+                  id="location"
                   name="location"
                   value={filters.location}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  placeholder="City, state, or remote"
+                  onChange={handleInputChange}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
+                  placeholder="City, State, or Country"
                 />
               </div>
-              
+            </div>
+            
+            <div className="flex items-end">
+              <button
+                type="submit"
+                className="w-full bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-dark"
+              >
+                Search Jobs
+              </button>
+            </div>
+          </div>
+          
+          <div className="mt-4 flex items-center">
+            <button
+              type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center text-primary font-medium hover:text-primary-dark"
+            >
+              <FaFilter className="mr-2" />
+              {showFilters ? 'Hide Filters' : 'Show Advanced Filters'}
+            </button>
+          </div>
+          
+          {showFilters && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label htmlFor="jobType" className="block text-sm font-medium text-gray-700 mb-1">
+                  Job Type
+                </label>
                 <select
-                  name="category"
-                  value={filters.category}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                >
-                  <option value="">All Categories</option>
-                  <option value="software">Software Development</option>
-                  <option value="design">Design</option>
-                  <option value="marketing">Marketing</option>
-                  <option value="finance">Finance</option>
-                  <option value="sales">Sales</option>
-                  <option value="healthcare">Healthcare</option>
-                </select>
-              </div>
-              
-              <div>
-                <select
+                  id="jobType"
                   name="jobType"
                   value={filters.jobType}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  onChange={handleInputChange}
+                  className="py-2 px-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                 >
-                  <option value="">All Job Types</option>
+                  <option value="">All Types</option>
                   <option value="full-time">Full-time</option>
                   <option value="part-time">Part-time</option>
                   <option value="contract">Contract</option>
+                  <option value="internship">Internship</option>
                   <option value="remote">Remote</option>
                 </select>
               </div>
               
               <div>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-70 flex items-center justify-center"
+                <label htmlFor="sort" className="block text-sm font-medium text-gray-700 mb-1">
+                  Sort By
+                </label>
+                <select
+                  id="sort"
+                  name="sort"
+                  value={filters.sort}
+                  onChange={handleInputChange}
+                  className="py-2 px-3 w-full border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
                 >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Searching...
-                    </>
-                  ) : (
-                    'Search Jobs'
-                  )}
-                </button>
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="salary-high">Highest Salary</option>
+                  <option value="salary-low">Lowest Salary</option>
+                </select>
               </div>
-            </div>
-          </form>
-        </div>
-
-        <div className="border-t border-slate-200 pt-6">
-          {searchPerformed && (
-            <div className="mb-4 text-slate-600">
-              Found {filteredJobs.length} job{filteredJobs.length !== 1 && 's'} matching your criteria
             </div>
           )}
-          
-          <div className="space-y-4">
-            {searchPerformed && filteredJobs.map(job => (
-              <motion.div
-                key={job.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden"
-              >
-                <div 
-                  className="p-6 cursor-pointer" 
-                  onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-                    <h3 className="text-xl font-medium text-slate-800">{job.title}</h3>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary mt-2 md:mt-0">
-                      {job.type}
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row sm:items-center text-sm text-slate-500 mt-2 space-y-1 sm:space-y-0">
-                    <div className="flex items-center">
-                      <HiOfficeBuilding className="mr-1 h-4 w-4" /> 
-                      {job.company}
-                    </div>
-                    <div className="sm:mx-3 hidden sm:block">•</div>
-                    <div className="flex items-center">
-                      <HiLocationMarker className="mr-1 h-4 w-4" />
-                      {job.location}
-                    </div>
-                    <div className="sm:mx-3 hidden sm:block">•</div>
-                    <div className="flex items-center">
-                      <HiCurrencyDollar className="mr-1 h-4 w-4" />
-                      {job.salary}
-                    </div>
-                    <div className="sm:mx-3 hidden sm:block">•</div>
-                    <div className="flex items-center">
-                      <HiClock className="mr-1 h-4 w-4" />
-                      Posted {job.posted}
-                    </div>
-                  </div>
-                  
-                  {expandedJob === job.id && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-4 pt-4 border-t border-slate-200"
-                    >
-                      <p className="text-slate-600 mb-4">{job.description}</p>
-                      
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-slate-700 mb-2">Requirements</h4>
-                        <ul className="list-disc pl-5 space-y-1 text-sm text-slate-600">
-                          {job.requirements.map((req, index) => (
-                            <li key={index}>{req}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <Link to={`/job-application`} className="block text-left">
-                      <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all text-sm">
-                        Apply Now
-                      </button>
-                      </Link>
-                    </motion.div>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-            
-            {searchPerformed && filteredJobs.length === 0 && (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-slate-700 mb-1">No jobs found</h3>
-                <p className="text-slate-500">Try adjusting your search criteria</p>
-              </div>
-            )}
-            
-            {!searchPerformed && (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium text-slate-700 mb-1">Start your job search</h3>
-                <p className="text-slate-500">Use the search filters above to find your perfect role</p>
-              </div>
-            )}
+        </form>
+      </div>
+
+      {/* Job Results */}
+      <div className="mb-8">
+        {loading ? (
+          <div className="text-center p-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            <p className="mt-2 text-gray-600">Loading jobs...</p>
           </div>
-        </div>
+        ) : error ? (
+          <div className="bg-red-50 text-center p-6 rounded-lg border border-red-200">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : jobs.length === 0 ? (
+          <div className="bg-gray-50 text-center p-12 rounded-lg border border-gray-200">
+            <p className="text-xl font-medium text-gray-500">No jobs found</p>
+            <p className="mt-2 text-gray-500">Try changing your search criteria</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <p className="text-gray-600">
+                Found <span className="font-semibold">{totalJobs}</span> jobs
+              </p>
+              
+              <div className="text-sm text-gray-500">
+                Page {page} of {totalPages}
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              {jobs.map(job => (
+                <div key={job._id} className="bg-white rounded-lg shadow-md p-6 border-l-4 border-primary hover:shadow-lg transition-shadow">
+                  <div className="flex justify-between">
+                    <h2 className="text-xl font-semibold mb-2">{job.title}</h2>
+                    <span className="text-sm text-gray-500">{formatDate(job.createdAt)}</span>
+                  </div>
+                  
+                  <div className="flex items-center mb-4">
+                    <span className="text-gray-700 font-medium">{job.company}</span>
+                    {job.remote && (
+                      <span className="ml-4 px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Remote</span>
+                    )}
+                    {job.jobType && (
+                      <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">{job.jobType}</span>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-wrap mb-4 text-gray-500 text-sm">
+                    <div className="flex items-center mr-6">
+                      <FaMapMarkerAlt className="mr-1" />
+                      {job.location || 'Location not specified'}
+                    </div>
+                    {job.salary && (
+                      <div className="flex items-center mr-6">
+                        <FaDollarSign className="mr-1" />
+                        {job.salary.min && job.salary.max 
+                          ? `${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()} ${job.salary.currency || 'USD'}`
+                          : job.salary.min 
+                            ? `From ${job.salary.min.toLocaleString()} ${job.salary.currency || 'USD'}` 
+                            : job.salary.max 
+                              ? `Up to ${job.salary.max.toLocaleString()} ${job.salary.currency || 'USD'}`
+                              : 'Salary not specified'
+                        }
+                      </div>
+                    )}
+                    <div className="flex items-center">
+                      <FaBriefcase className="mr-1" />
+                      {job.experience || 'Experience not specified'}
+                    </div>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-4 line-clamp-2">{job.summary || job.description.substring(0, 200)}...</p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {job.skills && job.skills.map((skill, index) => (
+                      <span key={index} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                  
+                  <div className="flex justify-end">
+                    <Link 
+                      to={`/jobs/${job._id}`} 
+                      className="flex items-center text-primary font-medium hover:text-primary-dark"
+                    >
+                      View Details
+                      <FaChevronRight className="ml-2" size={12} />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center">
+                <nav className="flex space-x-2">
+                  <button
+                    onClick={() => handlePageChange(page - 1)}
+                    disabled={page === 1}
+                    className={`px-4 py-2 rounded-md ${
+                      page === 1
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Previous
+                  </button>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    // Show pages around the current page
+                    const startPage = Math.max(1, page - 2);
+                    const pageNum = startPage + i;
+                    
+                    if (pageNum > totalPages) return null;
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => handlePageChange(pageNum)}
+                        className={`px-4 py-2 rounded-md ${
+                          pageNum === page
+                            ? 'bg-primary text-white'
+                            : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={() => handlePageChange(page + 1)}
+                    disabled={page === totalPages}
+                    className={`px-4 py-2 rounded-md ${
+                      page === totalPages
+                        ? 'text-gray-400 cursor-not-allowed'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
